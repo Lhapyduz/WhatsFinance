@@ -1,0 +1,25 @@
+{
+  "name": "whatsfinance",
+  "version": "1.0.0",
+  "description": "Controle de gastos pessoais via WhatsApp",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "finance",
+    "expenses",
+    "tracker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "whatsapp-web.js": "^1.26.0",
+    "qrcode-terminal": "^0.12.0",
+    "better-sqlite3": "^11.7.0",
+    "form-data": "^4.0.0"
+  }
+}
