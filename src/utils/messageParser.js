@@ -57,7 +57,7 @@ const commandWords = [
     'confirmar', 'sim', 'não', 'nao', 'categorias', 'saldo', 'balanço', 'balanco',
     'definir', 'limite', 'limites', 'orçamento', 'orcamento', 'ver', 'gastos', 'semana',
     'conta', 'fixa', 'fixas', 'recorrente', 'meta', 'metas', 'guardar', 'gráfico', 'grafico',
-    'remover'
+    'remover', 'ontem', 'hoje', 'anteontem', 'dia'
 ];
 
 /**
@@ -180,6 +180,14 @@ export function getCommandType(message) {
 
     if (lowerMsg.includes('semana') || lowerMsg.includes('últimos 7 dias') || lowerMsg.includes('ultimos 7 dias')) {
         return 'WEEK_REPORT';
+    }
+
+    // === CONSULTA POR DIA ===
+    // "quanto gastei ontem", "total de ontem", "total do dia 15", "gastos de hoje"
+    if (lowerMsg.includes('ontem') || lowerMsg.includes('hoje') || lowerMsg.includes('anteontem') ||
+        lowerMsg.match(/(?:total|gastos?|quanto)\s+(?:do|de|no)?\s*dia\s+\d{1,2}/i) ||
+        lowerMsg.match(/dia\s+\d{1,2}/i)) {
+        return 'DAY_REPORT';
     }
 
     // === GASTOS RECORRENTES ===

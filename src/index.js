@@ -14,7 +14,9 @@ import {
     getBalanceSummary,
     getMonthReport,
     getWeekReport,
-    parseMonthName
+    parseMonthName,
+    getDayReport,
+    parseDayText
 } from './services/expenseService.js';
 import { setBudget, listBudgets } from './services/budgetService.js';
 import {
@@ -31,12 +33,16 @@ console.log('║     💰 WhatsFinance - Controle Financeiro  ║');
 console.log('║          via WhatsApp                      ║');
 console.log('╚════════════════════════════════════════════╝\n');
 
+console.log(`📋 Node.js ${process.version} | PID: ${process.pid}`);
+console.log(`🕐 Iniciado em: ${new Date().toLocaleString('pt-BR')}\n`);
+
 // Estado para confirmação de limpeza
 let pendingClear = new Set();
 let myNumber = null;
 let processedMessages = new Set();
 
 // Criar cliente WhatsApp
+console.log('🔌 Criando cliente WhatsApp...');
 const client = createClient();
 
 // Capturar o número do usuário quando conectar
@@ -107,6 +113,26 @@ async function processMessage(text, from) {
 
             case 'WEEK_REPORT':
                 return getWeekReport();
+
+            case 'DAY_REPORT': {
+                // Extrair o dia do texto: "ontem", "hoje", "dia 15", etc.
+                let dayText = 'hoje';
+                const ontemMatch = text.match(/ontem/i);
+                const hojeMatch = text.match(/hoje/i);
+                const anteontemMatch = text.match(/anteontem/i);
+                const diaMatch = text.match(/dia\s+(\d{1,2})/i);
+
+                if (ontemMatch) dayText = 'ontem';
+                else if (anteontemMatch) dayText = 'anteontem';
+                else if (hojeMatch) dayText = 'hoje';
+                else if (diaMatch) dayText = diaMatch[1];
+
+                const date = parseDayText(dayText);
+                if (date) {
+                    return getDayReport(date);
+                }
+                return `❌ Não consegui identificar o dia.\n\nExemplos:\n• "total de ontem"\n• "gastos do dia 15"`;
+            }
 
             // === GASTOS RECORRENTES ===
             case 'ADD_RECURRING': {
@@ -302,12 +328,45 @@ client.on('message_create', async (message) => {
     }
 });
 
-// Iniciar cliente
+// Iniciar cliente com tratamento de erro
 console.log('🔄 Inicializando WhatsApp...\n');
-client.initialize();
+
+async function startClient() {
+    try {
+        await client.initialize();
+    } catch (error) {
+        if (error.message && error.message.includes('already running')) {
+            console.log('⚠️  Browser anterior ainda rodando. Limpando...');
+            // Limpar locks do Puppeteer
+            const fs = await import('fs');
+            const path = await import('path');
+            const lockFile = path.join('./data/whatsapp-session', 'session', 'SingletonLock');
+            try { fs.unlinkSync(lockFile); } catch { /* intentional */ }
+            const lockFile2 = path.join('./data/whatsapp-session', 'session', 'SingletonSocket');
+            try { fs.unlinkSync(lockFile2); } catch { /* intentional */ }
+            const lockFile3 = path.join('./data/whatsapp-session', 'session', 'SingletonCookie');
+            try { fs.unlinkSync(lockFile3); } catch { /* intentional */ }
+            console.log('🔄 Tentando novamente em 3 segundos...');
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                await client.initialize();
+            } catch (retryError) {
+                console.error('❌ Falha ao inicializar:', retryError.message);
+                console.log('💡 Tente: npm run reset && npm run dev');
+                process.exit(1);
+            }
+        } else {
+            console.error('❌ Erro ao inicializar:', error.message);
+            console.log('💡 Tente: npm run reset && npm run dev');
+            process.exit(1);
+        }
+    }
+}
+
+startClient();
 
 // Tratamento de erros não capturados
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
     console.error('❌ Unhandled Rejection:', reason);
 });
 

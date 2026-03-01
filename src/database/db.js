@@ -324,6 +324,61 @@ export function getExpensesByCategoryForMonth(month, year = new Date().getFullYe
 }
 
 // ==========================================
+// CONSULTA POR DIA ESPECÍFICO
+// ==========================================
+
+/**
+ * Obtém gastos de um dia específico
+ * @param {string} dateStr - Data no formato 'YYYY-MM-DD'
+ */
+export function getExpensesByDay(dateStr) {
+  const stmt = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total
+    FROM transactions
+    WHERE type = 'expense' AND date(created_at) = date(?)
+  `);
+  return stmt.get(dateStr).total;
+}
+
+/**
+ * Obtém ganhos de um dia específico
+ */
+export function getIncomeByDay(dateStr) {
+  const stmt = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total
+    FROM transactions
+    WHERE type = 'income' AND date(created_at) = date(?)
+  `);
+  return stmt.get(dateStr).total;
+}
+
+/**
+ * Obtém gastos por categoria de um dia específico
+ */
+export function getExpensesByCategoryForDay(dateStr) {
+  const stmt = db.prepare(`
+    SELECT category, SUM(amount) as total, COUNT(*) as count
+    FROM transactions
+    WHERE type = 'expense' AND date(created_at) = date(?)
+    GROUP BY category
+    ORDER BY total DESC
+  `);
+  return stmt.all(dateStr);
+}
+
+/**
+ * Obtém todas as transações de um dia específico
+ */
+export function getTransactionsByDay(dateStr) {
+  const stmt = db.prepare(`
+    SELECT * FROM transactions
+    WHERE date(created_at) = date(?)
+    ORDER BY created_at DESC
+  `);
+  return stmt.all(dateStr);
+}
+
+// ==========================================
 // GASTOS RECORRENTES
 // ==========================================
 

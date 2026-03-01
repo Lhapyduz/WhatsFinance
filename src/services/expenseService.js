@@ -16,7 +16,10 @@ import {
     getIncomeByMonth,
     getExpensesByCategoryForMonth,
     getExpensesThisWeek,
-    getIncomeThisWeek
+    getIncomeThisWeek,
+    getExpensesByDay,
+    getIncomeByDay,
+    getExpensesByCategoryForDay
 } from '../database/db.js';
 import { categorize, categorizeIncome, getAllCategories, categorizeByKeywords, categorizeIncomeByKeywords } from './categoryService.js';
 import { checkBudgetAlert } from './budgetService.js';
@@ -380,4 +383,83 @@ export function parseMonthName(monthName) {
 
     const index = monthsNormalized.findIndex(m => m.startsWith(normalized) || normalized.startsWith(m));
     return index !== -1 ? index + 1 : null;
+}
+
+/**
+ * Retorna relatório de um dia específico
+ * @param {Date} date - Data para consulta
+ * @returns {string} Relatório formatado
+ */
+export function getDayReport(date) {
+    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const expenses = getExpensesByDay(dateStr);
+    const income = getIncomeByDay(dateStr);
+    const balance = income - expenses;
+    const expensesByCategory = getExpensesByCategoryForDay(dateStr);
+
+    // Formatar data para exibição
+    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const dayName = dayNames[date.getDay()];
+    const formattedDate = date.toLocaleDateString('pt-BR');
+
+    if (expenses === 0 && income === 0) {
+        return `📅 *${dayName}, ${formattedDate}*\n\nNenhum registro encontrado.`;
+    }
+
+    let response = `📅 *${dayName}, ${formattedDate}*\n\n`;
+    response += `📈 *Ganhos:* ${formatCurrency(income)}\n`;
+    response += `📉 *Gastos:* ${formatCurrency(expenses)}\n`;
+    response += `💵 *Saldo do dia:* ${formatCurrency(balance)}\n\n`;
+
+    if (expensesByCategory.length > 0) {
+        response += `*Gastos por categoria:*\n`;
+        for (const cat of expensesByCategory) {
+            const percentage = expenses > 0 ? ((cat.total / expenses) * 100).toFixed(1) : 0;
+            response += `${cat.category}: ${formatCurrency(cat.total)} (${percentage}%)\n`;
+        }
+    }
+
+    return response;
+}
+
+/**
+ * Converte texto para data
+ * @param {string} dayText - "ontem", "hoje", "15", "dia 7", etc.
+ * @returns {Date|null} Data ou null se não reconhecer
+ */
+export function parseDayText(dayText) {
+    const normalized = dayText.toLowerCase().trim();
+    const today = new Date();
+
+    if (normalized === 'hoje') {
+        return today;
+    }
+
+    if (normalized === 'ontem') {
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        return yesterday;
+    }
+
+    if (normalized === 'anteontem') {
+        const dayBefore = new Date(today);
+        dayBefore.setDate(today.getDate() - 2);
+        return dayBefore;
+    }
+
+    // "dia 15" ou apenas "15"
+    const dayMatch = normalized.match(/(?:dia\s*)?(\d{1,2})/);
+    if (dayMatch) {
+        const day = parseInt(dayMatch[1]);
+        if (day >= 1 && day <= 31) {
+            const date = new Date(today.getFullYear(), today.getMonth(), day);
+            // Se o dia é maior que hoje, assume mês anterior
+            if (day > today.getDate()) {
+                date.setMonth(date.getMonth() - 1);
+            }
+            return date;
+        }
+    }
+
+    return null;
 }
