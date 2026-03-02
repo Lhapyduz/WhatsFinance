@@ -12,6 +12,7 @@ export function createClient() {
             dataPath: './data/whatsapp-session'
         }),
         puppeteer: {
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
             headless: true,
             args: [
                 '--no-sandbox',

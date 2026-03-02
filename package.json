@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --watch --env-file=.env src/index.js",
     "reset": "node -e \"const fs=require('fs');fs.rmSync('./data/whatsapp-session',{recursive:true,force:true});console.log('Sessão limpa com sucesso!')\""
   },
   "keywords": [
