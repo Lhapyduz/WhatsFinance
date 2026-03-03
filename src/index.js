@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createClient } from './whatsapp/client.js';
 import { parseExpense, getCommandType, isCommand } from './utils/messageParser.js';
 import { transcribeWhatsAppAudio } from './services/audioService.js';
