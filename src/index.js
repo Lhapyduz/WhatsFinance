@@ -47,9 +47,26 @@ console.log('🔌 Criando cliente WhatsApp...');
 const client = createClient();
 
 // Capturar o número do usuário quando conectar
-client.on('ready', () => {
+client.on('ready', async () => {
     myNumber = client.info.wid._serialized;
     console.log(`📱 Seu número: ${myNumber}`);
+
+    // Verificar contas fixas ao iniciar
+    console.log('🔄 Verificando contas fixas...');
+    const recurringMessage = checkAndProcessRecurring();
+    if (recurringMessage) {
+        await client.sendMessage(myNumber, recurringMessage);
+        console.log('✅ Contas fixas processadas no início');
+    }
+
+    // Agendar verificação a cada 12 horas
+    setInterval(async () => {
+        console.log('🔄 Verificação automática de contas fixas...');
+        const msg = checkAndProcessRecurring();
+        if (msg) {
+            await client.sendMessage(myNumber, msg);
+        }
+    }, 12 * 60 * 60 * 1000);
 });
 
 /**
@@ -137,18 +154,29 @@ async function processMessage(text, from) {
 
             // === GASTOS RECORRENTES ===
             case 'ADD_RECURRING': {
-                // Formato: "conta fixa 150 netflix dia 15"
-                const recurringMatch = text.match(/(?:conta fixa|gasto fixo)\s+(\d+(?:[.,]\d{1,2})?)\s+(.+?)\s+dia\s+(\d{1,2})/i);
-                if (recurringMatch) {
-                    const amount = parseFloat(recurringMatch[1].replace(',', '.'));
-                    const description = recurringMatch[2].trim();
-                    const dayOfMonth = parseInt(recurringMatch[3]);
+                // Formato 1: "conta fixa 150 netflix dia 15"
+                const recurringMatch1 = text.match(/(?:conta fixa|gasto fixo)\s+(\d+(?:[.,]\d{1,2})?)\s+(.+?)\s+dia\s+(\d{1,2})/i);
+                // Formato 2: "conta fixa netflix 150 dia 15"
+                const recurringMatch2 = text.match(/(?:conta fixa|gasto fixo)\s+(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s+dia\s+(\d{1,2})/i);
+
+                if (recurringMatch1) {
+                    const amount = parseFloat(recurringMatch1[1].replace(',', '.'));
+                    const description = recurringMatch1[2].trim();
+                    const dayOfMonth = parseInt(recurringMatch1[3]);
+
+                    if (dayOfMonth >= 1 && dayOfMonth <= 31) {
+                        return addRecurringExpense(amount, description, dayOfMonth);
+                    }
+                } else if (recurringMatch2) {
+                    const description = recurringMatch2[1].trim();
+                    const amount = parseFloat(recurringMatch2[2].replace(',', '.'));
+                    const dayOfMonth = parseInt(recurringMatch2[3]);
 
                     if (dayOfMonth >= 1 && dayOfMonth <= 31) {
                         return addRecurringExpense(amount, description, dayOfMonth);
                     }
                 }
-                return `❌ Formato inválido.\n\nExemplo:\n"conta fixa 150 netflix dia 15"`;
+                return `❌ Formato inválido.\n\nExemplo:\n"conta fixa 150 netflix dia 15" ou\n"conta fixa netflix 150 dia 15"`;
             }
 
             case 'LIST_RECURRING':
