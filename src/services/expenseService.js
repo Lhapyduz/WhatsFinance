@@ -275,7 +275,7 @@ export function getHelp() {
         `• "gastei 50 no mercado"\n` +
         `• "ganhei 100 na diária"\n\n` +
         `*📊 Consultar:*\n` +
-        `• *total* | *saldo* | *gráfico*\n` +
+        `• *total* | *saldo* | *gráfico* | *categorias*\n` +
         `• *gastos de dezembro* | *semana*\n\n` +
         `*💰 Orçamento:*\n` +
         `• "definir limite 2000"\n` +

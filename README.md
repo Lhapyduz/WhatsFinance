@@ -101,7 +101,8 @@ O bot usa inteligência artificial (Whisper) para transcrever e processar automa
 
 O app categoriza automaticamente seus gastos:
 
-- 🍞 **Alimentação**: mercado, restaurante, ifood, etc.
+- 🛒 **Mercado**: supermercado, feira, açougue, atacado, etc.
+- 🍞 **Alimentação**: restaurante, ifood, café, almoço, etc.
 - 🚗 **Transporte**: uber, gasolina, estacionamento, etc.
 - 🏠 **Moradia**: aluguel, luz, água, internet, etc.
 - 🎬 **Lazer**: netflix, cinema, viagem, etc.
