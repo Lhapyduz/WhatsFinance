@@ -27,6 +27,7 @@ export function generateTextChart() {
     // Emojis para as categorias
     const categoryEmojis = {
         '🍞 Alimentação': '🍞',
+        '🛒 Mercado': '🛒',
         '🚗 Transporte': '🚗',
         '🏠 Moradia': '🏠',
         '🎬 Lazer': '🎬',

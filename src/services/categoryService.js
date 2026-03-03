@@ -1,8 +1,10 @@
 // Mapeamento de palavras-chave para categorias de GASTOS
 const expenseKeywords = {
+    '🛒 Mercado': [
+        'mercado', 'supermercado', 'feira', 'açougue', 'hortifruti', 'atacado', 'atacadao'
+    ],
     '🍞 Alimentação': [
-        'pão', 'cafe', 'café', 'almoço', 'almoco', 'jantar', 'lanche', 'mercado',
-        'supermercado', 'feira', 'açougue', 'padaria', 'restaurante', 'pizza',
+        'pão', 'cafe', 'café', 'almoço', 'almoco', 'jantar', 'lanche', 'restaurante', 'pizza',
         'hamburguer', 'comida', 'fruta', 'verdura', 'carne', 'leite', 'ovo',
         'arroz', 'feijão', 'feijao', 'ifood', 'delivery', 'marmita', 'salgado',
         'doce', 'sorvete', 'chocolate', 'biscoito', 'refrigerante', 'cerveja',

@@ -4,7 +4,8 @@ import https from 'https';
 // Lista de categorias disponíveis
 const expenseCategories = [
     '🍞 Alimentação',
-    '🚗 Transporte',
+    '� Mercado',
+    '�🚗 Transporte',
     '🏠 Moradia',
     '🎬 Lazer',
     '💊 Saúde',
