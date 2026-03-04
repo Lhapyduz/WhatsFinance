@@ -435,6 +435,40 @@ export function removeRecurringExpenseByDescription(description) {
 }
 
 /**
+ * Paga manualmente um gasto recorrente
+ * Retorna o objeto do gasto se teve sucesso e se ainda não foi processado este mês
+ */
+export function payRecurringExpenseByDescription(description, amount = null) {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
+  // Buscar a conta que dá match
+  // Pela descrição (LIKE)
+  const stmtFind = db.prepare(`
+    SELECT * FROM recurring_expenses 
+    WHERE active = 1 AND LOWER(description) LIKE ?
+  `);
+  const expense = stmtFind.get(`%${description.toLowerCase()}%`);
+
+  if (!expense) return { error: 'not_found' };
+
+  // Opcionalmente, o usuário pode ter digitado o valor como verificação.
+  if (amount !== null && Math.abs(expense.amount - amount) > 0.01) {
+    // Apenas aviso, mas pra não bloquear
+  }
+
+  // Verificar se já foi processado este mês
+  if (expense.last_processed === currentMonth) {
+    return { error: 'already_paid', expense };
+  }
+
+  // Marcar como processado
+  const stmtUpdate = db.prepare('UPDATE recurring_expenses SET last_processed = ? WHERE id = ?');
+  stmtUpdate.run(currentMonth, expense.id);
+
+  return { success: true, expense };
+}
+
+/**
  * Obtém gastos recorrentes que precisam ser processados hoje
  */
 export function getRecurringToProcess() {
@@ -447,6 +481,24 @@ export function getRecurringToProcess() {
     WHERE active = 1 
     AND day_of_month = ?
     AND (last_processed IS NULL OR last_processed != ?)
+  `);
+  return stmt.all(dayOfMonth, currentMonth);
+}
+
+/**
+ * Obtém gastos recorrentes que ainda vencem neste mês (e não foram processados)
+ */
+export function getPendingRecurringThisMonth() {
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const currentMonth = today.toISOString().slice(0, 7);
+
+  const stmt = db.prepare(`
+    SELECT * FROM recurring_expenses 
+    WHERE active = 1 
+    AND day_of_month >= ?
+    AND (last_processed IS NULL OR last_processed != ?)
+    ORDER BY day_of_month ASC
   `);
   return stmt.all(dayOfMonth, currentMonth);
 }

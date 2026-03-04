@@ -4,7 +4,8 @@ import {
     removeRecurringExpenseByDescription as dbRemoveRecurring,
     getRecurringToProcess,
     markRecurringAsProcessed,
-    addExpense
+    addExpense,
+    payRecurringExpenseByDescription
 } from '../database/db.js';
 import { categorize } from './categoryService.js';
 
@@ -77,6 +78,34 @@ export function removeRecurringExpense(description) {
         return `✅ Conta fixa "${description}" removida.`;
     }
     return `❌ Conta fixa "${description}" não encontrada.`;
+}
+
+/**
+ * Paga manualmente um gasto recorrente
+ * @param {string} description - Nome/descrição parcial
+ * @param {number} amount - Valor opcional para verificação
+ * @returns {string} Mensagem de confirmação
+ */
+export function payRecurringExpense(description, amount = null) {
+    const result = payRecurringExpenseByDescription(description, amount);
+
+    if (result.error === 'not_found') {
+        return `❌ Conta fixa "${description}" não encontrada.`;
+    }
+
+    if (result.error === 'already_paid') {
+        return `⚠️ A conta fixa "${result.expense.description}" já consta como paga neste mês.`;
+    }
+
+    // Registrar o gasto real nas transações (adicionar à soma do mês)
+    const expense = result.expense;
+    addExpense(expense.amount, expense.description, expense.category);
+
+    return `✅ *Conta fixa paga!*\n\n` +
+        `💸 *Valor:* ${formatCurrency(expense.amount)}\n` +
+        `📝 *Descrição:* ${expense.description}\n` +
+        `🏷️ *Categoria:* ${expense.category}\n\n` +
+        `_Já adicionei esse valor aos seus gastos do mês._`;
 }
 
 /**

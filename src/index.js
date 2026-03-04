@@ -24,7 +24,8 @@ import {
     addRecurringExpense,
     listRecurringExpenses,
     removeRecurringExpense,
-    checkAndProcessRecurring
+    checkAndProcessRecurring,
+    payRecurringExpense
 } from './services/recurringService.js';
 import { addGoal, listGoals, removeGoal } from './services/goalService.js';
 import { generateTextChart } from './services/chartService.js';
@@ -136,30 +137,72 @@ async function processMessage(text, from) {
             }
 
             // === GASTOS RECORRENTES ===
-            case 'ADD_RECURRING': {
-                // Formato: "conta fixa 150 netflix dia 15"
-                const recurringMatch = text.match(/(?:conta fixa|gasto fixo)\s+(\d+(?:[.,]\d{1,2})?)\s+(.+?)\s+dia\s+(\d{1,2})/i);
-                if (recurringMatch) {
-                    const amount = parseFloat(recurringMatch[1].replace(',', '.'));
-                    const description = recurringMatch[2].trim();
-                    const dayOfMonth = parseInt(recurringMatch[3]);
+            case 'PAY_RECURRING': {
+                // Formato: "conta fixa internet 100 pago"
+                const cleanText = text.replace(/^(?:conta fixa|gasto fixo)\s+/i, '');
+                // Expressão para pegar <desc> <valor> pago ou apenas <desc> pago
+                let match = cleanText.match(/^(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s+pago$/i);
 
-                    if (dayOfMonth >= 1 && dayOfMonth <= 31) {
-                        return addRecurringExpense(amount, description, dayOfMonth);
+                if (match) {
+                    const description = match[1].trim();
+                    const amount = parseFloat(match[2].replace(',', '.'));
+                    return payRecurringExpense(description, amount);
+                } else {
+                    match = cleanText.match(/^(.+?)\s+pago$/i);
+                    if (match) {
+                        const description = match[1].trim();
+                        return payRecurringExpense(description);
                     }
                 }
-                return `❌ Formato inválido.\n\nExemplo:\n"conta fixa 150 netflix dia 15"`;
+                return `❌ Formato inválido.\n\nExemplo: "conta fixa internet 100 pago" ou "conta fixa internet pago"`;
+            }
+
+            case 'ADD_RECURRING': {
+                // Formato 1: "conta fixa 150 netflix dia 15"
+                // Formato 2: "conta fixa netflix 150 dia 15"
+                const cleanText = text.replace(/^(?:adicionar |adiciona )?(?:conta fixa|gasto fixo)\s+/i, '');
+
+                // Tentar Formato 1 primeiro (valor -> descrição -> dia)
+                let match = cleanText.match(/^(\d+(?:[.,]\d{1,2})?)\s+(.+?)\s+dia\s+(\d{1,2})$/i);
+
+                let amount, description, dayOfMonth;
+
+                if (match) {
+                    amount = parseFloat(match[1].replace(',', '.'));
+                    description = match[2].trim();
+                    dayOfMonth = parseInt(match[3]);
+                } else {
+                    // Tentar Formato 2 (descrição -> valor -> dia)
+                    match = cleanText.match(/^(.+?)\s+(\d+(?:[.,]\d{1,2})?)\s+dia\s+(\d{1,2})$/i);
+                    if (match) {
+                        description = match[1].trim();
+                        amount = parseFloat(match[2].replace(',', '.'));
+                        dayOfMonth = parseInt(match[3]);
+                    }
+                }
+
+                if (match && dayOfMonth >= 1 && dayOfMonth <= 31) {
+                    return addRecurringExpense(amount, description, dayOfMonth);
+                }
+
+                return `❌ Formato inválido.\n\nExemplos:\n"conta fixa 150 netflix dia 15"\n"conta fixa internet 100 dia 20"`;
             }
 
             case 'LIST_RECURRING':
                 return listRecurringExpenses();
 
             case 'REMOVE_RECURRING': {
-                const removeMatch = text.match(/(?:remover|cancelar)\s+conta\s+fixa\s+(.+)/i);
+                const removeMatch = text.match(/(?:remover|remove|cancelar)\s+conta\s+fixa\s+(.+)/i);
                 if (removeMatch) {
-                    return removeRecurringExpense(removeMatch[1].trim());
+                    let desc = removeMatch[1].trim();
+                    // Limpar possivelmente valor e dia se o usuário mandou o texto completo do ADD
+                    // ex: "internet 100 dia 20" -> "internet"
+                    desc = desc.replace(/\s+\d+(?:[.,]\d{1,2})?\s+dia\s+\d{1,2}$/i, '').trim();
+                    // ex: "100 internet dia 20" -> "internet"
+                    desc = desc.replace(/^\d+(?:[.,]\d{1,2})?\s+(.+?)\s+dia\s+\d{1,2}$/i, '$1').trim();
+                    return removeRecurringExpense(desc);
                 }
-                return `❌ Especifique qual conta remover.\n\nExemplo: "remover conta fixa netflix"`;
+                return `❌ Especifique qual conta remover.\n\nExemplo: "remover conta fixa netflix" ou "remove conta fixa internet"`;
             }
 
             // === METAS ===

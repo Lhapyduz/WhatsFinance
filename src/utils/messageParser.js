@@ -57,7 +57,7 @@ const commandWords = [
     'confirmar', 'sim', 'não', 'nao', 'categorias', 'saldo', 'balanço', 'balanco',
     'definir', 'limite', 'limites', 'orçamento', 'orcamento', 'ver', 'gastos', 'semana',
     'conta', 'fixa', 'fixas', 'recorrente', 'meta', 'metas', 'guardar', 'gráfico', 'grafico',
-    'remover', 'ontem', 'hoje', 'anteontem', 'dia'
+    'remover', 'remove', 'adicionar', 'adiciona', 'ontem', 'hoje', 'anteontem', 'dia', 'pago'
 ];
 
 /**
@@ -182,17 +182,13 @@ export function getCommandType(message) {
         return 'WEEK_REPORT';
     }
 
-    // === CONSULTA POR DIA ===
-    // "quanto gastei ontem", "total de ontem", "total do dia 15", "gastos de hoje"
-    if (lowerMsg.includes('ontem') || lowerMsg.includes('hoje') || lowerMsg.includes('anteontem') ||
-        lowerMsg.match(/(?:total|gastos?|quanto)\s+(?:do|de|no)?\s*dia\s+\d{1,2}/i) ||
-        lowerMsg.match(/dia\s+\d{1,2}/i)) {
-        return 'DAY_REPORT';
+    // === GASTOS RECORRENTES ===
+    if (lowerMsg.match(/^(?:conta fixa|gasto fixo)\s+(.+?)\s+pago$/i)) {
+        return 'PAY_RECURRING';
     }
 
-    // === GASTOS RECORRENTES ===
     if (lowerMsg.startsWith('conta fixa') || lowerMsg.startsWith('gasto fixo') ||
-        lowerMsg.includes('adicionar conta fixa')) {
+        lowerMsg.includes('adicionar conta fixa') || lowerMsg.includes('adiciona conta fixa')) {
         return 'ADD_RECURRING';
     }
 
@@ -201,8 +197,16 @@ export function getCommandType(message) {
         return 'LIST_RECURRING';
     }
 
-    if (lowerMsg.startsWith('remover conta fixa') || lowerMsg.startsWith('cancelar conta fixa')) {
+    if (lowerMsg.startsWith('remover conta fixa') || lowerMsg.startsWith('remove conta fixa') || lowerMsg.startsWith('cancelar conta fixa')) {
         return 'REMOVE_RECURRING';
+    }
+
+    // === CONSULTA POR DIA ===
+    // "quanto gastei ontem", "total de ontem", "total do dia 15", "gastos de hoje"
+    if (lowerMsg.includes('ontem') || lowerMsg.includes('hoje') || lowerMsg.includes('anteontem') ||
+        lowerMsg.match(/(?:total|gastos?|quanto)\s+(?:do|de|no)?\s*dia\s+\d{1,2}/i) ||
+        lowerMsg.match(/dia\s+\d{1,2}/i)) {
+        return 'DAY_REPORT';
     }
 
     // === METAS ===

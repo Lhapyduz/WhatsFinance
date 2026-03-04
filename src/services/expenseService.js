@@ -15,11 +15,11 @@ import {
     getExpensesByMonth,
     getIncomeByMonth,
     getExpensesByCategoryForMonth,
-    getExpensesThisWeek,
-    getIncomeThisWeek,
     getExpensesByDay,
     getIncomeByDay,
-    getExpensesByCategoryForDay
+    getExpensesByCategoryForDay,
+    getPendingRecurringThisMonth,
+    getRecurringExpenses
 } from '../database/db.js';
 import { categorize, categorizeIncome, getAllCategories, categorizeByKeywords, categorizeIncomeByKeywords } from './categoryService.js';
 import { checkBudgetAlert } from './budgetService.js';
@@ -144,18 +144,64 @@ export function getSummary() {
             `• "ganhei 100 na diária"`;
     }
 
+    // Integração das contas fixas pendentes
+    const pendingRecurring = getPendingRecurringThisMonth();
+    let totalPending = 0;
+
+    // Preparar categorias mescladas com os pendentes
+    let mergedCategories = [...expensesByCategory];
+
+    if (pendingRecurring.length > 0) {
+        totalPending = pendingRecurring.reduce((acc, curr) => acc + curr.amount, 0);
+
+        // Mesclar nas categorias
+        for (const pending of pendingRecurring) {
+            const existingCat = mergedCategories.find(c => c.category === pending.category);
+            if (existingCat) {
+                existingCat.total += pending.amount;
+                existingCat.count += 1;
+            } else {
+                mergedCategories.push({
+                    category: pending.category,
+                    total: pending.amount,
+                    count: 1
+                });
+            }
+        }
+
+        // Reordenar decrescente
+        mergedCategories.sort((a, b) => b.total - a.total);
+    }
+
+    const projectedTotalExpenses = totalExpenses + totalPending;
+    const projectedBalance = totalIncome - projectedTotalExpenses;
+
     let response = `📊 *Resumo Financeiro*\n\n`;
     response += `💰 *Total ganhos:* ${formatCurrency(totalIncome)}\n`;
-    response += `💸 *Total gastos:* ${formatCurrency(totalExpenses)}\n`;
-    response += `💵 *Saldo:* ${formatCurrency(balance)}\n\n`;
-    response += `📅 *Este mês:*\n`;
+    response += `💸 *Total gastos (+ pendentes):* ${formatCurrency(projectedTotalExpenses)}\n`;
+    response += `💵 *Saldo projetado:* ${formatCurrency(projectedBalance)}\n\n`;
+
+    response += `📅 *Neste mês (já consolidado):*\n`;
     response += `   Ganhos: ${formatCurrency(monthIncome)}\n`;
     response += `   Gastos: ${formatCurrency(monthExpenses)}\n\n`;
 
-    if (expensesByCategory.length > 0) {
-        response += `*Gastos por categoria:*\n`;
-        for (const cat of expensesByCategory) {
-            const percentage = totalExpenses > 0 ? ((cat.total / totalExpenses) * 100).toFixed(1) : 0;
+    // Exibir o status de TODAS as contas fixas do mês
+    const allRecurring = getRecurringExpenses();
+    if (allRecurring.length > 0) {
+        response += `🔄 *Contas Fixas do Mês:*\n`;
+        const currentMonthStr = new Date().toISOString().slice(0, 7);
+        for (const rec of allRecurring) {
+            const isPaid = rec.last_processed === currentMonthStr;
+            const statusIcon = isPaid ? '✅' : '⏳';
+            response += `${statusIcon} ${rec.description}: ${formatCurrency(rec.amount)}\n`;
+        }
+        response += `\n`;
+    }
+
+    if (mergedCategories.length > 0) {
+        response += `*Gastos por categoria (projetado):*\n`;
+        for (const cat of mergedCategories) {
+            const percentage = projectedTotalExpenses > 0 ? ((cat.total / projectedTotalExpenses) * 100).toFixed(1) : 0;
             response += `${cat.category}: ${formatCurrency(cat.total)} (${percentage}%)\n`;
         }
     }
@@ -198,14 +244,56 @@ export function getMonthSummary() {
             `Você ainda não registrou nada este mês.`;
     }
 
+    const pendingRecurring = getPendingRecurringThisMonth();
+    let totalPending = 0;
+
+    // Preparar categorias mescladas com os pendentes
+    let mergedCategories = [...expensesByCategory];
+
+    if (pendingRecurring.length > 0) {
+        totalPending = pendingRecurring.reduce((acc, curr) => acc + curr.amount, 0);
+
+        for (const pending of pendingRecurring) {
+            const existingCat = mergedCategories.find(c => c.category === pending.category);
+            if (existingCat) {
+                existingCat.total += pending.amount;
+                existingCat.count += 1;
+            } else {
+                mergedCategories.push({
+                    category: pending.category,
+                    total: pending.amount,
+                    count: 1
+                });
+            }
+        }
+
+        mergedCategories.sort((a, b) => b.total - a.total);
+    }
+
+    const projectedTotalExpenses = monthExpenses + totalPending;
+    const projectedBalance = monthIncome - projectedTotalExpenses;
+
     let response = `📅 *${currentMonth}*\n\n`;
     response += `📈 *Ganhos:* ${formatCurrency(monthIncome)}\n`;
-    response += `📉 *Gastos:* ${formatCurrency(monthExpenses)}\n`;
-    response += `💵 *Saldo do mês:* ${formatCurrency(monthIncome - monthExpenses)}\n\n`;
+    response += `📉 *Gastos (+ pendentes):* ${formatCurrency(projectedTotalExpenses)}\n`;
+    response += `💵 *Saldo projetado do mês:* ${formatCurrency(projectedBalance)}\n\n`;
 
-    if (expensesByCategory.length > 0) {
-        response += `*Gastos por categoria:*\n`;
-        for (const cat of expensesByCategory) {
+    // Exibir o status de TODAS as contas fixas do mês
+    const allRecurring = getRecurringExpenses();
+    if (allRecurring.length > 0) {
+        response += `🔄 *Contas Fixas do Mês:*\n`;
+        const currentMonthStr = new Date().toISOString().slice(0, 7);
+        for (const rec of allRecurring) {
+            const isPaid = rec.last_processed === currentMonthStr;
+            const statusIcon = isPaid ? '✅' : '⏳';
+            response += `${statusIcon} ${rec.description}: ${formatCurrency(rec.amount)}\n`;
+        }
+        response += `\n`;
+    }
+
+    if (mergedCategories.length > 0) {
+        response += `*Gastos por categoria (projetado):*\n`;
+        for (const cat of mergedCategories) {
             response += `${cat.category}: ${formatCurrency(cat.total)}\n`;
         }
     }
